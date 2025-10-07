@@ -1,23 +1,105 @@
 pipeline {
+
+    environment {
+
+        registry = "amamououssama/devopsimage"
+
+        registryCredential = 'dockerHub'
+
+        dockerImage = ''
+
+    }
+ 
     agent any
-
-    tools {
-        maven 'Maven3'
-        jdk 'JDK17'
-    }
-
+ 
     stages {
-        stage('Checkout') {
+
+        stage('CHECKOUT GIT') {
+
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/amamou-oussama/devops_project'
+
+                git 'https://github.com/amamou-oussama/devops_project'
+
             }
+
+        }
+ 
+        stage('MVN CLEAN') {
+
+            steps {
+
+                sh 'mvn clean'
+
+            }
+
+        }
+ 
+        stage('ARTIFACT CONSTRUCTION') {
+
+            steps {
+
+                echo 'ARTIFACT CONSTRUCTION...'
+
+                sh 'mvn package -Dmaven.test.skip=true -P test-coverage'
+
+            }
+
+        }
+ 
+        stage('UNIT TESTS') {
+
+            steps {
+
+                echo 'launching Unit Tests...'
+
+                sh 'mvn test'
+
+            }
+
+        }
+ 
+        stage('MVN SONARQUBE') {
+
+            steps {
+
+sh 'mvn sonar:sonar -Dsonar.host.url=http://192.168.6.160:9000 -Dsonar.login=squ_9afbb105c1caa0962e880127006175f6371c86f0'
+
+            }
+
+        }
+ 
+        stage('BUILDING OUR IMAGE') {
+
+            steps {
+
+                script {
+
+                    dockerImage = docker.build registry + ":$BUILD_NUMBER"
+
+                }
+
+            }
+
+        }
+ 
+        stage('DEPLOY OUR IMAGE') {
+
+            steps {
+
+                script {
+
+                    docker.withRegistry('', registryCredential) {
+
+                        dockerImage.push()
+
+                    }
+
+                }
+
+            }
+
         }
 
-        stage('Build') {
-            steps {
-                sh 'mvn clean package'
-            }
-        }
     }
+
 }
